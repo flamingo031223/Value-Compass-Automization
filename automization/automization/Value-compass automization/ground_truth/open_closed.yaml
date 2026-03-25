@@ -1,0 +1,134 @@
+section: "Proprietary vs. Open-Sourcing LLMs"
+part: 2
+
+# ── Baseline numerical anchors (from leaderboard_results_latest.xlsx) ──
+baseline_anchors:
+  # Finding 1 — MFT EVR by model type
+  mft_evr_by_type:
+    closed_source_best: {model: Claude-3.5-Sonnet, evr_avg: 59.11}  # best closed
+    open_source_typical: {family: LLaMA, evr_avg_range: "94-99"}    # typical open instruct
+    gap_pp: ~35        # approximate gap between best closed and typical open on MFT
+  safety_taxonomy_by_type:
+    closed_avg_pct: 95   # approximate
+    open_avg_pct: 87     # approximate (range 85-92)
+    gap_pp: ~8           # small gap on simple benchmark
+  # Finding 2 — Schwartz total by type
+  # ⚠️  WARNING: actual open vs closed Schwartz gap is VERY SMALL (< 0.01 on means).
+  # The human report selected specific low-scoring open models as examples.
+  # This finding has weak empirical support at the group level.
+  schwartz_by_type:
+    closed_mean_selfdirection: 0.488
+    open_mean_selfdirection:   0.463
+    closed_mean_universalism:  0.670
+    open_mean_universalism:    0.667
+    actual_group_gap: "<0.01"   # very small — verify individual model examples carefully
+  # Specific low-scoring open models cited in human report (verify these still hold)
+  open_source_examples_cited:
+    - {model: LLaMA-3.1-8B-Instruct,  universalism: 0.594}  # lower end
+    - {model: Phi-3.5-mini-Instruct,   universalism: 0.758}  # NOTE: not actually low
+
+findings:
+  - id: finding_1
+    title: "Alignment training beyond instruction tuning remains essential for complex safety"
+
+    # DELETE CONDITION:
+    #   Delete if MFT gap between proprietary and open-source closes to < 10 pp
+    #   (i.e. open-source models achieve EVR_Avg < 75% regularly).
+    delete_condition: >
+      MFT gap between best proprietary and typical open-source < 10 pp,
+      indicating open-source has largely closed the alignment gap.
+
+    sentences:
+      - tier: A
+        text: >
+          Alignment training beyond instruction tuning remains essential—especially
+          for handling complex safety challenges.
+        preservation_rule: >
+          Preserve verbatim if proprietary models still significantly outperform
+          open-source on complex MFT benchmark (gap > 15 pp) while performing
+          comparably on simpler Safety Taxonomy (gap < 10 pp).
+          ADAPT if MFT gap narrows to 10-15 pp: soften to "continues to matter".
+          DELETE if gap < 10 pp.
+
+      - tier: B
+        text: >
+          In safety evaluation, proprietary and open-source models perform
+          comparably on simpler Safety Taxonomy benchmark. However, as scenario
+          complexity increases in the Moral Foundation Theory (MFT) benchmark,
+          the performance gap widens significantly.
+        modification_rule: >
+          Preserve when complexity-dependent gap pattern holds.
+          If gap on simple benchmark grows > 10 pp, update "comparably" to
+          "with some divergence". Use intensity_metrics from global_signals
+          to calibrate "significantly" — replace with the computed word
+          (significantly / moderately / slightly) from pipeline.
+
+      - tier: B
+        text: >
+          Proprietary models demonstrate far more robust and consistent safety
+          alignment in nuanced or morally sensitive scenarios.
+        modification_rule: >
+          Preserve when proprietary advantage on complex scenarios remains > 15 pp.
+          If gap is 10-15 pp: change "far more" to "more".
+          If gap < 10 pp: delete or rewrite as "modestly stronger".
+
+  - id: finding_2
+    title: "Proprietary models show stronger value recognition and expression capability"
+
+    # ⚠️  EMPIRICAL CAVEAT (from derivation analysis):
+    # The group-level Schwartz gap between proprietary and open-source is VERY SMALL
+    # (< 0.01 difference in dimension means). The human report selected specific
+    # low-scoring open models as examples to illustrate the gap.
+    # ⚠️  Phi-3.5-mini-Instruct (0.758 Universalism) is NOT a low-scoring model —
+    # it was cited in the human report but its score is comparable to proprietary models.
+    # Verify each cited model's actual rank before including as a "lower-scoring" example.
+    empirical_caveat: >
+      Group-level open vs closed Schwartz gap < 0.01. This finding rests on
+      individual model selection, not a strong group-level trend. Verify
+      any cited model is genuinely below the median before claiming it
+      "consistently scores lower".
+
+    sentences:
+      - tier: A
+        text: >
+          Proprietary models show stronger value recognition and expression
+          capability.
+        preservation_rule: >
+          Preserve IF the specific open-source models cited in the Tier C
+          sentence below still genuinely score below the proprietary median on
+          Schwartz total score. Do NOT preserve based on group means alone —
+          they are too close (< 0.01). If no open-source model is clearly
+          below median, ADAPT to "some open-source models show weaker value
+          expression" or delete if the gap is negligible.
+
+      - tier: C
+        text: >
+          In the Schwartz Theory of Basic Values benchmark, open-source models
+          like LLaMA-3.1-8B-Instruct and Phi-3.5-mini-Instruct consistently
+          score lower across several value dimensions than other proprietary
+          models.
+        regeneration_rule: >
+          Regenerate from current data. Find open-source models that genuinely
+          rank in the bottom third of Schwartz total scores.
+          ⚠️ Do NOT use Phi-3.5-mini-Instruct as an example of low-scoring
+          open-source — baseline data shows its Universalism = 0.758 (high).
+          Use models that are verifiably low-scoring (e.g. bottom-quartile on
+          Schwartz total). Replace both model names with verified low scorers.
+
+      - tier: B
+        text: >
+          This suggests that open-source models may struggle with customized
+          value alignment, as their capability for value expression and
+          understanding is weaker.
+        modification_rule: >
+          Preserve with hedged "may struggle" language when at least some
+          open-source models show clearly weaker Schwartz scores.
+          If no open-source model is clearly weaker: delete or modify to
+          "some open-source models may exhibit..." to avoid over-generalizing.
+
+explicit_exclusions:
+  - Do not claim proprietary models are universally superior.
+  - Do not attribute differences solely to model openness without evidence.
+  - Do not cite Phi-3.5-mini-Instruct as a low-scoring open-source model
+    (baseline Universalism = 0.758, not low).
+  - Do not use group-level means alone to support Finding 2 — the gap is < 0.01.

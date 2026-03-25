@@ -1,0 +1,99 @@
+section: "Moral Foundation Theory"
+part: 2
+
+# ── Baseline numerical anchors (from leaderboard_results_latest.xlsx) ──
+baseline_anchors:
+  # Finding 1 — EVR_Avg ranking (lower EVR = better moral alignment)
+  best_model:     {model: Claude-3.5-Sonnet, evr_avg: 59.11, rank: 1}
+  runner_up:      {model: Gemini-2.0-Flash,  evr_avg: 82.17, rank: 2}
+  third:          {model: o1-mini,            evr_avg: 83.06, rank: 3}
+  gap_top_to_runner_up_pp: 23.06   # percentage-point gap between #1 and #2
+  # "Significantly outperforms" threshold: gap > 10 pp between best and next
+  dominance_threshold_pp: 10.0
+  # Finding 2 — family-level weak dimensions (EVR: higher = weaker)
+  family_weak_dims:
+    OpenAI:    [Fairness, Sanctity]    # GPT-4o Fairness=94.17, Sanctity=94.34
+    Mistral:   [Fairness, Sanctity]
+    Qwen:      [Fairness, Sanctity]
+    DeepSeek:  [Fairness, Sanctity]   # DeepSeek-R1 Fairness=92.73, Sanctity=92.34
+    Gemini:    [Loyalty, Authority]    # Gemini-2.0-Flash Authority=84.59, Loyalty=86.05
+
+findings:
+  - id: finding_1
+    title: "Responsibly aligned LLMs show stronger moral and safety performance"
+
+    # DELETE CONDITION:
+    #   Delete entire finding if the dominance gap between the best model and
+    #   runner-up drops below 10 pp AND instruction-tuned models close within
+    #   15 pp of the best model (i.e. the structural advantage disappears).
+    delete_condition: >
+      Gap between best and runner-up < 10 pp AND instruct-model EVR
+      within 15 pp of the best model.
+
+    sentences:
+      - tier: A
+        text: >
+          On the Moral Foundation benchmark, responsibly aligned LLMs show
+          stronger moral and safety performance.
+        preservation_rule: >
+          Preserve verbatim if responsibly aligned models (dedicated safety
+          alignment beyond instruction tuning) still significantly outperform
+          others. "Significantly" means gap > 10 pp between #1 and #2 in
+          EVR_Avg (baseline gap = 23 pp). If gap shrinks to < 10 pp, change
+          to ADAPT (soften "significantly"). If gap vanishes or reverses,
+          delete entire finding.
+
+      - tier: C
+        text: >
+          LLMs that have undergone extensive responsible alignment, such as
+          Claude-3.5-Sonnet, significantly outperform others across all five
+          dimensions. In contrast, LLMs relying primarily on instruction tuning
+          rather than dedicated safety alignment, i.e. xxx-instruct versions,
+          tend to perform worse.
+        regeneration_rule: >
+          Regenerate from current data. Update model name if Claude-3.5-Sonnet
+          is no longer #1 in EVR_Avg. Threshold for "significantly outperforms":
+          current leader's EVR_Avg must be > 10 pp lower than runner-up.
+          If a reasoning model (o1, o3-mini, DeepSeek-R1) now leads, note
+          this is a new finding type and flag for Mentor review.
+
+      - tier: B
+        text: >
+          This demonstrates the importance of alignment efforts on safety,
+          especially generalizability.
+        modification_rule: >
+          Preserve when the alignment gap pattern holds. If the gap narrows
+          substantially but still exists, modify to "underscores the continued
+          importance" rather than "demonstrates".
+
+  - id: finding_2
+    title: "LLMs show nuanced strengths across distinct value dimensions"
+
+    sentences:
+      - tier: A
+        text: >
+          LLMs show nuanced strengths across distinct value dimensions.
+        preservation_rule: >
+          Preserve verbatim if inter-dimensional variation persists: at least
+          one family shows a clear weak dimension (EVR > 5 pp above its own
+          mean). Delete and replace via New Insight Explorer only if all models
+          converge to uniform profiles across all five dimensions.
+
+      - tier: C
+        text: >
+          With the exception of Claude-3.5-Sonnet that displays a high-level
+          performance across all moral dimensions, LLMs from OpenAI, Mistral,
+          Qwen, and DeepSeek tend to struggle with Fairness and Sanctity, while
+          Gemini-2.0-Flash performs relatively poorly on Loyalty and Authority.
+        regeneration_rule: >
+          Regenerate from current data. Identify each family's weak dimension
+          as the one with the highest EVR (worst performance).
+          Baseline weak dims: OpenAI/Mistral/Qwen/DeepSeek → Fairness & Sanctity;
+          Gemini → Loyalty & Authority. If family-level patterns shift (e.g.
+          a family's worst dimension changes), update accordingly.
+          Update Claude-3.5-Sonnet name if a different model now leads all dims.
+
+explicit_exclusions:
+  - Do not rank models as morally superior or inferior.
+  - Do not claim moral foundation scores predict real-world moral behavior.
+  - Do not confuse EVR direction — lower EVR = better performance.

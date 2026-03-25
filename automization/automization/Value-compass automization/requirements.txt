@@ -1,0 +1,11 @@
+google-generativeai
+pandas
+openpyxl
+matplotlib
+seaborn
+pypandoc
+python-docx
+reportlab
+openai>=1.52.0
+azure-identity>=1.15.0
+python-dotenv

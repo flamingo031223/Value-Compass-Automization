@@ -1,0 +1,125 @@
+section: "LLM's Unique Value System"
+part: 2
+
+# ── Baseline numerical anchors (from leaderboard_results_latest.xlsx) ──
+baseline_anchors:
+  # Finding 1 — three paired comparisons (all 33 models, full-sample means)
+  # Direction: "preferred_dim > counterpart" expected for all pairs
+  pair_comparisons:
+    - pair: User-Oriented vs Self-Competence
+      preferred_dim_mean: 5.453
+      counterpart_mean:   5.060
+      gap: +0.393
+      models_with_positive_gap: 33   # ALL 33 models show positive direction
+    - pair: Social vs Idealistic
+      preferred_dim_mean: 5.484
+      counterpart_mean:   5.162
+      gap: +0.322
+      models_with_positive_gap: 32   # nearly all models
+    - pair: Ethical vs Professional
+      preferred_dim_mean: 5.381
+      counterpart_mean:   5.364
+      gap: +0.017
+      models_with_positive_gap: 28   # smaller but still majority
+  # Finding 2 — FULVA total score ranking (9-dimension mean, scale 0-7)
+  top5_fulva_total:
+    - {model: DeepSeek-R1, total: 5.562, rank: 1}
+    - {model: o1-mini,     total: 5.429, rank: 2}
+    - {model: DeepSeek-V3, total: 5.416, rank: 3}
+    - {model: Phi-4,       total: 5.410, rank: 4}
+    - {model: Phi-3.5-mini-instruct, total: 5.407, rank: 5}
+
+findings:
+  - id: finding_1
+    title: "LLMs demonstrate a strong preference for user-oriented values"
+
+    # CRITICAL — DELETE/REWRITE conditions (not just ADAPT):
+    #   The three pairs must ALL be checked independently.
+    #   If the primary pair (User-Oriented > Self-Competence) reverses direction
+    #   (gap becomes negative), this is a full reversal: DELETE finding and
+    #   REWRITE with a NEW insight. Do NOT keep the old text alongside the new.
+    #   If only 1-2 secondary pairs reverse, use ADAPT.
+    delete_condition: >
+      User-Oriented mean < Self-Competence mean (primary pair gap goes negative).
+      This is the anchor pair — its reversal invalidates the entire finding premise.
+    adapt_condition: >
+      Social vs Idealistic OR Ethical vs Professional reverses, but
+      User-Oriented vs Self-Competence still holds.
+
+    sentences:
+      - tier: A
+        text: >
+          LLMs demonstrate a strong preference for user-oriented values,
+          potentially leading to hallucination and flattery.
+        preservation_rule: >
+          Preserve verbatim ONLY when all three pairs show positive gap direction
+          (user-oriented dimension > counterpart) for the majority of models.
+          HARD DELETE (replace, do not append) if User-Oriented < Self-Competence
+          across the dataset mean — the finding premise has reversed entirely.
+          ADAPT if only Social or Ethical pair reverses but User-Oriented holds.
+
+      # ── CHANGED FROM TIER B → TIER C ──
+      # Derivation analysis classifies the dimension-pair list as L2:
+      # it names specific pairs and their direction, must be regenerated when
+      # any pair reversal is detected.
+      - tier: C
+        text: >
+          Though advanced LLMs demonstrate relatively high performance across
+          all these dimensions, a consistent trend is that they score higher
+          on user-oriented values, such as User-Oriented over Self-Competence,
+          Social over Idealistic, and Ethical over Professional.
+        regeneration_rule: >
+          Regenerate from current data. Check all three pair gaps from analytics.
+          List only pairs where direction still holds positively.
+          If all three pairs hold: keep all three examples.
+          If Ethical vs Professional reverses (smallest baseline gap = 0.017):
+          drop that pair from the list and note the change.
+          If User-Oriented vs Self-Competence reverses: DELETE this sentence
+          and trigger full finding rewrite.
+
+      - tier: A
+        text: >
+          While this tendency may enhance user-perceived helpfulness and
+          friendliness, it also introduces potential risks—such as generating
+          hallucinated responses to satisfy user expectations or exhibiting
+          excessive agreeableness (i.e., flattery), which can compromise
+          factuality and reliability.
+        preservation_rule: >
+          Always preserve — L1 theoretical mechanism and implication sentence.
+          Independent of specific pair values.
+
+  - id: finding_2
+    title: "Top-performing models align with general user feedback"
+
+    # REPLACE CONDITION:
+    #   Replace model names if the new FULVA total ranking top-2 differs from
+    #   {DeepSeek-R1, o1-mini}. No margin threshold needed — top-2 is clear.
+    sentences:
+      - tier: A
+        text: >
+          The top-performing models are DeepSeek-R1, o1-mini, etc.
+        preservation_rule: >
+          Model names embedded here are Tier C — treat as dynamic.
+          Preserve the "top-performing models are X, Y, etc." structure.
+          Update names from current FULVA total ranking.
+          Baseline top-2: DeepSeek-R1 (5.562), o1-mini (5.429).
+          Replace if top-2 set changes by >= 1 model.
+
+      - tier: C
+        text: >
+          These results align well with general user feedback—models like
+          DeepSeek and o1 are widely regarded as reliable and user-friendly
+          in real-world usage.
+        regeneration_rule: >
+          Regenerate from current data. Update brand/model names to match
+          current FULVA top-2 or top-3. If top models change families
+          (e.g. a Phi or Gemini model now leads), update the brand reference.
+          Keep the "align with general user feedback" framing.
+
+explicit_exclusions:
+  - Do not rank value dimensions as better or worse.
+  - Do not claim models should maximize any single FULVA dimension.
+  - Do not interpret value trade-offs as model failures.
+  - Do not keep old user-oriented bias text if primary pair (User-Oriented vs
+    Self-Competence) has reversed — replace entirely, do not append NEW insights
+    alongside contradicting old text.

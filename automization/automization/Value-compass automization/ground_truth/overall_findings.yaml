@@ -1,0 +1,342 @@
+section: "Overall Perspectives of LLM Value Evaluation"
+part: 1
+
+# ── Baseline numerical anchors (computed from leaderboard_results_latest.xlsx) ──
+# Used by data_change_detector.py to judge whether changes are meaningful.
+baseline_anchors:
+  schwartz_dimension_order:
+    - Universalism    # 0.668 — #1
+    - Security        # 0.571 — #2
+    - Benevolence     # 0.545 — #3
+    - Self-direction  # 0.477 — #4
+    - Achievement     # 0.424 — #5
+    - Tradition       # 0.406 — #6
+    - Conformity      # 0.405 — #7
+    - Stimulation     # 0.296 — #8
+    - Power           # 0.238 — #9
+    - Hedonism        # 0.219 — #10
+  schwartz_top4: [Universalism, Security, Benevolence, Self-direction]
+  schwartz_bottom3: [Stimulation, Power, Hedonism]
+  # Finding 3 cross-framework example anchors
+  ov3_o3mini_selfdirection_rank: 1       # o3-mini Self-Direction = 0.615, #1
+  ov3_o3mini_stimulation_rank: 1         # o3-mini Stimulation = 0.425, #1
+  ov3_o3mini_mft_fairness_evr: 91.51    # high EVR = relatively poor Fairness
+  ov3_o3mini_risk_reptox_asr: 0.117     # above-average ASR = weaker safety
+  # ⚠️  Known data error in human report: OV-3 uses "DeepSeek-R1 prefers Conformity"
+  # but actual baseline shows DeepSeek-V3 Conformity = 0.518 (#1); R1 ≈ 0.450.
+  # Do NOT use DeepSeek-R1 as the Conformity example. Use DeepSeek-V3.
+  ov3_conformity_correct_model: DeepSeek-V3   # Conformity #1, score 0.518
+  ov3_conformity_wrong_model: DeepSeek-R1     # was mis-cited in human report
+  # Finding 4 anchors
+  mft_best_model: Claude-3.5-Sonnet
+  mft_best_evr_avg: 59.11          # % EVR — lower is better
+  mft_runner_up: Gemini-2.0-Flash
+  mft_runner_up_evr: 82.17
+  mft_gap_pp: 23.06                # gap between #1 and #2 in EVR percentage points
+  safety_phi3medium_avg: 98.89     # Phi-3-Medium Safety Taxonomy average
+  safety_o3mini_avg: 97.50         # o3-mini Safety Taxonomy average
+
+findings:
+  - id: finding_1
+    title: "LLMs' value orientations demonstrate high alignment with universal human values"
+
+    # DELETE CONDITION (applies to entire finding):
+    #   Trigger DELETE + full REWRITE (not "adapt") when:
+    #     - Power OR Hedonism enters the top-3 of the Schwartz dimension ordering, OR
+    #     - fewer than 3 of the baseline top-4 dims remain in the new top-4.
+    #   In that case this finding and OV-1 title sentence CANNOT coexist with any
+    #   NEW insight claiming the opposite — the old content must be REPLACED, not appended to.
+    delete_condition: "Power or Hedonism enters top-3 of Schwartz dimension ranking"
+
+    sentences:
+      - tier: A
+        text: >
+          LLMs' value orientations demonstrate high alignment with universal
+          human values, particularly in well-aligned models.
+        preservation_rule: >
+          Preserve verbatim if overall Schwartz value ordering keeps
+          Universalism/Benevolence/Security in the top-4.
+          HARD DELETE (do not soften, do not add NEW insight alongside):
+          if Power or Hedonism enters top-3 — the finding premise has inverted
+          and cannot coexist with the new data reality.
+
+      # ── CHANGED FROM TIER B → TIER C ──
+      # Derivation analysis classifies this as L2: it lists specific dimension names
+      # in priority order; must be regenerated when ordering shifts.
+      - tier: C
+        text: >
+          As shown in the figure of Schwartz value results, LLMs prioritize
+          Universalism, Benevolence, Security, and Self-Direction, followed by
+          moderate emphasis on Achievement, Conformity, and Tradition, with
+          Stimulation, Hedonism, and Power receiving lower priority.
+        regeneration_rule: >
+          Regenerate priority list from current dimension means.
+          Preserve sentence structure. If ordering has changed substantially
+          (e.g. Power now in top-5), rewrite to reflect new ordering.
+          Specific threshold: regenerate if any baseline top-4 dim drops below rank 6
+          OR any baseline bottom-3 dim rises above rank 5.
+
+      # ── CHANGED FROM TIER B → TIER C ──
+      # Contains specific model name (Claude-3.5-Sonnet) — derivation says L2.
+      - tier: C
+        text: >
+          Well-aligned LLMs, i.e. those aligned beyond instruction-tuning such
+          as Claude-3.5-Sonnet, score significantly higher in safety-involving
+          value dimensions.
+        regeneration_rule: >
+          Update model name if the top-scorer in Universalism/Security/Benevolence
+          changes. Verify new data: if Claude-3.5-Sonnet is no longer in the
+          top-3 for these dimensions, replace with the current leader.
+          Keep sentence structure.
+
+      - tier: B
+        text: >
+          Though fine-grained priorities vary within each group, the whole
+          hierarchical order of these values is similar to the pan-cultural
+          baseline observed in human value surveys.
+        modification_rule: >
+          Preserve when top-4 ordering trend holds.
+          Modify only if systematic reversal is detected (Power ranked #1
+          across the dimension ordering). Do not modify for minor rank swaps
+          among positions 2-4.
+
+      - tier: A
+        text: >
+          This alignment likely stems from shared training corpora embedding
+          universal values. This results in baseline LLM values that benefit the
+          most common requirements of humans such as universalism and security,
+          while these LLMs struggle to fit cultural or personalized value
+          orientations.
+        preservation_rule: >
+          Always preserve — theoretical mechanism sentence, independent of
+          specific numerical rankings.
+
+  - id: finding_2
+    title: "Most LLMs demonstrate a clear bias towards Western cultural values"
+
+    # ── FULL FREEZE STRATEGY ──
+    # Core data (model-vs-country Schwartz similarity matrix) is ABSENT from
+    # the benchmark Excel. All L2 sentences below are FROZEN.
+    # Pipeline action: skip all L2 change detection for this finding.
+    # Append DATA_PENDING_FOOTNOTE verbatim at end of this finding in output.
+    freeze_strategy: FULL_FREEZE
+    data_pending_footnote: >
+      [DATA PENDING] The core data for this finding (model-vs-country Schwartz
+      similarity matrix for FR/UK/US/CN/SG/ID/RU) is absent from the current
+      dataset. Content preserved from the previous human report. Theoretical
+      background: Kirk et al. (2024) PRISM Alignment Dataset, arXiv:2404.16019.
+
+    sentences:
+      - tier: A
+        text: >
+          Most LLMs demonstrate a clear bias towards Western cultural values.
+        preservation_rule: >
+          FREEZE: country similarity matrix missing. Preserve verbatim.
+          L1 status — also keep even after data becomes available unless
+          Western-top-3 ranking reverses.
+
+      - tier: B
+        text: >
+          As illustrated in the heatmap, most LLMs exhibit the highest value
+          alignment with France, the UK, and the US, followed by China.
+        modification_rule: >
+          FREEZE (country similarity matrix missing): preserve verbatim.
+          When data becomes available: if Western top-3 unchanged → KEEP;
+          if a non-Western country enters top-3 → REPLACE country names.
+
+      - tier: A
+        text: >
+          This pattern is likely attributable to the pre-training and alignment
+          data being heavily dominated by Western corpora. Additionally, a
+          substantial portion of non-English training data is translated from
+          English sources, potentially reinforcing Western cultural
+          representations.
+        preservation_rule: >
+          Always preserve — L1 theoretical explanation.
+          PRISM (arXiv:2404.16019) may be cited as additional evidence.
+
+      - tier: C
+        text: >
+          Notably, even models developed in non-Western country, such as
+          Deepseek-R1 and Qwen-max from China, do not demonstrate significantly
+          stronger alignment with Chinese cultural orientation.
+        regeneration_rule: >
+          FREEZE (country similarity matrix missing): preserve verbatim.
+          When data available: update model names; if DeepSeek-R1/Qwen-Max
+          Chinese similarity improves by >0.05 vs baseline → modify to soften
+          "do not demonstrate significantly stronger".
+
+      - tier: A
+        text: >
+          This suggests that existing LLMs lack dedicated alignment from the
+          cultural perspective. While this cultural value bias does not
+          necessarily impact task performance or general capabilities, it raises
+          concerns about eroding cultural diversity and inclusiveness in AI
+          systems.
+        preservation_rule: >
+          Always preserve — L1 policy/implications sentence.
+
+  - id: finding_3
+    title: "LLMs' values correlate with their practical behaviors"
+
+    # ⚠️  KNOWN DATA ERROR IN HUMAN REPORT:
+    # The report uses "DeepSeek-R1 prefers Conformity" as the cross-framework
+    # example. Baseline data shows DeepSeek-V3 Conformity = 0.518 (#1);
+    # DeepSeek-R1 Conformity ≈ 0.450. ALWAYS use DeepSeek-V3 for Conformity.
+    # The OV-3 cross-framework o3-mini example is valid ONLY when:
+    #   o3-mini MFT Fairness_EVR > 88 (high violation rate = poor Fairness) AND
+    #   o3-mini Risk Rep_Toxicity ASR > 0.08 (above-average attack success).
+    # If either condition fails, the example is INVALID — do NOT use it.
+    cross_framework_example_validity:
+      model: o3-mini
+      condition_a: "MFT Fairness_EVR > 88"
+      condition_b: "Risk Rep_Toxicity_ASR > 0.08"
+      action_if_invalid: DELETE_EXAMPLE_AND_FIND_ALTERNATIVE
+
+    sentences:
+      - tier: A
+        text: >
+          LLMs' values correlate with their practical behaviors.
+        preservation_rule: >
+          Preserve verbatim if cross-framework correlation signals remain
+          detectable. Hard delete only if correlation completely disappears
+          (i.e. no model shows consistent cross-framework patterns).
+
+      - tier: C
+        text: >
+          In the figure below, a prompt comparing innovative experiential
+          learning with traditional structured methods reveals distinct value
+          preferences across models. O3-mini prioritizing Self-Direction and
+          Stimulation advocates experiential learning that fosters creativity
+          and critical thinking. In contrast, DeepSeek-R1 shows a stronger
+          alignment with Conformity, followed by a preference for stability
+          and predictability, and supports standardized instruction to ensure
+          foundational knowledge.
+        regeneration_rule: >
+          Regenerate from current data.
+          ⚠️ CORRECTION: Replace "DeepSeek-R1" with "DeepSeek-V3" for Conformity
+          example — baseline data confirms DeepSeek-V3 Conformity = 0.518 (#1),
+          not R1. Verify o3-mini still ranks #1 on Self-Direction and Stimulation;
+          if not, replace with the actual current leader.
+
+      - tier: C
+        text: >
+          Moreover, there is consistency among relevant dimensions across these
+          diverse value systems. For example, o3-mini performs relatively poorly
+          in the Fairness/Cheating dimension of the Moral Foundation Theory,
+          and correspondingly underperforms in the Representation & Toxicity
+          Harms dimension of the Safety Taxonomy.
+        regeneration_rule: >
+          Before using this example, validate cross_framework_example_validity
+          conditions above. If o3-mini Fairness_EVR <= 88 OR Rep_Toxicity_ASR
+          <= 0.08, this example is INVALID — DELETE it and find an alternative
+          model that still shows co-weakness across MFT Fairness and
+          Rep_Toxicity. Do not keep an invalidated example.
+
+      - tier: B
+        text: >
+          This observed correlation implies the potential of aligning LLMs from
+          the perspective of high-level values to direct their practical manners
+          in a more generalized and robust manner. However, the current
+          correlations remain weak and warrant further investigation. Our
+          benchmarks provide signals on both representative cases and underlying
+          value orientations, serving as a foundation for future alignment
+          research.
+        modification_rule: >
+          Preserve when correlation signals still exist (even if weak).
+          If cross-framework examples above are all invalidated and no
+          alternatives exist, soften "correlations remain weak" to
+          "correlations appear to be decoupling".
+
+  - id: finding_4
+    title: "Static evaluation is prone to over-estimation of LLM safety"
+
+    sentences:
+      - tier: A
+        text: >
+          Static evaluation is prone to over-estimation of LLM safety.
+        preservation_rule: >
+          Preserve verbatim if gap between Safety Taxonomy (high scores) and
+          MFT (lower scores) persists — i.e. majority of models > 90 on Safety
+          Taxonomy AND best MFT EVR_Avg still > 55%.
+          Hard delete only if both benchmarks converge (Safety drops broadly
+          below 85 AND MFT best EVR improves to < 40%).
+
+      - tier: C
+        text: >
+          On the static safety benchmark (Safety Taxonomy), most advanced LLMs
+          achieve near-perfect scores, regardless of their performance on other
+          complex tasks. For example, Phi-3-Medium scores even higher than
+          o3-mini.
+        regeneration_rule: >
+          Regenerate from current data. Verify: Phi-3-Medium Safety Avg
+          (baseline 98.89%) vs o3-mini Safety Avg (baseline 97.50%).
+          If this relationship has reversed, find a new pair that illustrates
+          "unexpected model scores higher than expected model".
+          Keep sentence structure.
+
+      - tier: C
+        text: >
+          Nevertheless, on the dynamic Moral Foundation benchmark, which
+          features increasing levels of difficulty, the performance of all LLMs
+          drops significantly. For example, the best-performing Claude-3.5-Sonnet
+          only obtains a score of 68.36.
+        regeneration_rule: >
+          Regenerate from current data. Update best-performing model name
+          and score. Baseline: Claude-3.5-Sonnet EVR_Avg = 59.11% (reported
+          as ~68.36 in human report using a different scoring formula).
+          If a new model now leads on MFT, replace both name and score.
+
+      - tier: B
+        text: >
+          This observation reveals the existence of ceiling effects in static
+          benchmarks as LLMs advance, as well as the overestimation of safety
+          performance based on such benchmarks. Furthermore, these findings
+          highlight the necessity of incorporating dynamic evaluation methods
+          to more accurately reflect LLM behavior under varying levels of
+          complexity.
+        modification_rule: >
+          Preserve when ceiling effect pattern still holds (majority > 90 on
+          static, substantially lower on dynamic). If ceiling effect is
+          weakening (fewer models above 90), soften to "diminishing ceiling
+          effects".
+
+  - id: finding_5
+    title: "Safety measurement needs to be more adaptive and context-aware"
+
+    sentences:
+      - tier: A
+        text: >
+          The measurement of safety and definition of LLM risks need to be more
+          adaptive and context-aware.
+        preservation_rule: >
+          Always preserve — methodological/policy conclusion, independent of
+          specific benchmark scores.
+
+      - tier: B
+        text: >
+          For instance, in the Safety Taxonomy benchmark, the generation of
+          adult content is currently categorized under the Representative &
+          Toxicity Harms dimension, resulting in a low safety score. However,
+          such responses may not be inherently unsafe in certain cultural
+          contexts or use cases, such as sex education or legally regulated
+          adult platforms.
+        modification_rule: >
+          Preserve when the Rep_Toxicity categorization issue remains.
+          Update only if the benchmark framework has been revised to handle
+          context-sensitive harms.
+
+      - tier: B
+        text: >
+          Therefore, safety benchmarks that account for context are necessary to
+          avoid overly rigid or culturally misaligned evaluations.
+        modification_rule: >
+          Always preserve — policy recommendation sentence.
+
+explicit_exclusions:
+  - Do not create an overall model ranking.
+  - Do not reduce multi-framework analysis to a single score.
+  - Do not extrapolate from value alignment scores to real-world behavior predictions.
+  - Do not use DeepSeek-R1 as the Conformity example — use DeepSeek-V3 (see baseline_anchors).
+  - Do not keep OV-3 cross-framework example if validity conditions fail (see finding_3).
+  - Do not append NEW insights alongside a deleted finding — replace, do not co-exist.

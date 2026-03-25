@@ -1,0 +1,96 @@
+section: "Schwartz Theory of Basic Values"
+part: 2
+
+# ── Baseline numerical anchors (from leaderboard_results_latest.xlsx) ──
+baseline_anchors:
+  # Finding 1 — dimension leaders
+  selfdirection_leader: {model: o3-mini, value: 0.615, rank: 1}
+  stimulation_leader:   {model: o3-mini, value: 0.425, rank: 1}
+  universalism_leader:  {model: Qwen-Max, value: 0.798, rank: 1}
+  benevolence_leader:   {model: Qwen-Max, value: 0.650, rank: 3}
+  conformity_leader:    {model: DeepSeek-V3, value: 0.518, rank: 1}
+  # Finding 2 — Schwartz total scores (sum of 10 dimensions)
+  top3_total_scores:
+    - {model: o3-mini,          total: 4.979, rank: 1}
+    - {model: Qwen-Max,         total: 4.857, rank: 2}
+    - {model: Claude-3.5-Sonnet, total: 4.814, rank: 3}
+  # Replace condition: new leader's score must differ from baseline by >= 0.05
+  min_leadership_margin: 0.05
+
+findings:
+  - id: finding_1
+    title: "Most models share a value order matching the pan-cultural baseline"
+
+    # DELETE CONDITION:
+    #   Trigger DELETE + REWRITE (not soft ADAPT) when fewer than 3 of the
+    #   baseline top-4 dims {Universalism, Security, Benevolence, Self-direction}
+    #   remain in the new top-4, OR when Power or Hedonism enters top-3.
+    delete_condition: "Power or Hedonism enters top-3 of Schwartz dimension ordering"
+
+    sentences:
+      - tier: A
+        text: >
+          Most models share a value order matching the pan-cultural baseline,
+          though subtle preference differences remain.
+        preservation_rule: >
+          Preserve verbatim if the relative ordering of major Schwartz dimensions
+          does not show systematic reversal: at least 3 of {Universalism, Security,
+          Benevolence, Self-direction} remain in the new top-4.
+          Hard delete (not adapt) if Power or Hedonism enters top-3 — the core
+          premise has inverted. A NEW insight must then REPLACE this finding,
+          not be appended alongside it.
+
+      - tier: C
+        text: >
+          For instance, o3-mini scores higher on Self-Direction and Stimulation;
+          Qwen-Max emphasizes Universalism and Benevolence; and DeepSeek-V3
+          demonstrates a distinctive preference for Conformity.
+        regeneration_rule: >
+          Regenerate from current data using dimension_leaders from analytics.
+          Replace each model name only when the new leader's margin over the
+          runner-up is >= 0.05 (see baseline_anchors.min_leadership_margin).
+          ⚠️ Conformity leader is DeepSeek-V3 (0.518), NOT DeepSeek-R1 — this
+          was a known error in the original human report. Always verify against
+          current data; do not inherit the error.
+          Keep sentence structure (three examples with semicolons).
+
+  - id: finding_2
+    title: "Certain models exhibit more pronounced value orientations across dimensions"
+
+    # REPLACE CONDITION for model names embedded in Tier A:
+    #   Replace top-3 model names if the new top-3 Schwartz total set differs
+    #   from {o3-mini, Qwen-Max, Claude-3.5-Sonnet} by >= 1 model AND the
+    #   new entrant's total score exceeds the displaced model's by >= 0.05.
+    sentences:
+      - tier: A
+        text: >
+          Notably, o3-mini, Qwen-Max, and Claude-3.5-Sonnet exhibit more
+          pronounced value orientations across dimensions.
+        preservation_rule: >
+          Preserve if these three models still occupy the top-3 Schwartz total
+          score positions (baseline totals: 4.979, 4.857, 4.814).
+          Update model names (treat embedded names as Tier C) if a new model
+          enters top-3 with a margin >= 0.05 over the displaced model.
+          Delete entire finding only if overall profiles flatten across all
+          models (i.e. top-vs-bottom spread < 0.3 total score points).
+
+      - tier: B
+        text: >
+          This observation may be explained from two perspectives:
+          (i) they behave in a more human-like manner, making them more likely
+          to reflect value preferences in their responses. In contrast, other
+          models may exhibit fewer value signals, leading to flatter profiles
+          and lower overall scores;
+          (ii) these models are better aligned with human benefits and, as a
+          result, perform well on value dimensions prioritized by humans, such
+          as Universalism.
+        modification_rule: >
+          Preserve explanatory mechanism when the pronounced-orientation
+          pattern still holds. Modify if evidence shifts toward alternative
+          explanations or if the top models change significantly.
+
+explicit_exclusions:
+  - Do not rank models as morally better or worse.
+  - Do not equate value alignment with safety or overall quality.
+  - Do not overinterpret single-dimension score differences.
+  - Do not use DeepSeek-R1 as Conformity leader — correct model is DeepSeek-V3.

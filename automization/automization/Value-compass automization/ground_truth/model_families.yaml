@@ -1,0 +1,115 @@
+section: "LLM Families"
+part: 2
+
+# ── Baseline numerical anchors (from leaderboard_results_latest.xlsx) ──
+baseline_anchors:
+  # Finding 1 — intra-family consistency examples
+  intra_family_examples:
+    GPT_family:
+      GPT-4o_universalism: 0.679
+      GPT-4o-mini_universalism: 0.672
+      intra_gap: 0.007    # extremely small
+    Claude_family:
+      Claude-3.5-Sonnet_mft_evr: 59.11
+      Claude-3.5-Haiku_mft_evr:  85.93
+      note: "Direction same (both outperform most), but gap within family is notable"
+    LLaMA_family:
+      universalism_range: [0.594, 0.662]    # LLaMA-3.x series
+      intra_spread: 0.068
+    Phi_family:
+      universalism_range: [0.629, 0.787]
+      intra_spread: 0.158
+    Gemini_family:
+      note: "Gemini-2.0-Pro and Flash values extremely close"
+  # Threshold: intra-family significant divergence = intra_spread > 0.20
+  # on Schwartz total OR > 20 pp on MFT EVR with direction reversal
+  divergence_threshold: 0.20
+
+  # Finding 2 — inter-family vs intra-family contrast
+  inter_vs_intra:
+    o3mini_selfdirection: 0.615   # OpenAI reasoning — high
+    llama_selfdirection_mean: 0.45  # LLaMA family — substantially lower
+    inter_family_gap: 0.165       # o3-mini vs LLaMA on Self-Direction
+    llama_intra_gap: 0.04         # LLaMA-3.1-8B (0.457) vs 3.1-70B (0.416)
+    # inter >> intra confirms the finding
+
+findings:
+  - id: finding_1
+    title: "Within the same family, LLMs exhibit highly similar patterns"
+
+    # DELETE CONDITION:
+    #   Delete if a major family shows significant divergence:
+    #   intra-family Schwartz total spread > 0.20 OR MFT EVR direction reverses
+    #   within a family (one member clearly worse than a different family's member
+    #   while another is clearly better).
+    delete_condition: >
+      A major family (GPT, Claude, LLaMA, Gemini, or Phi) shows Schwartz
+      total intra-spread > 0.20 or MFT EVR direction reversal within the family.
+
+    sentences:
+      - tier: A
+        text: >
+          Within the same family, LLMs tend to exhibit highly similar patterns
+          in both value orientation and safety performance.
+        preservation_rule: >
+          Preserve verbatim if intra-family consistency remains high: for each
+          major family the Schwartz total intra-spread < 0.20 and MFT EVR
+          direction is consistent (all members better than cross-family average,
+          or all below it). Delete entire finding if a major family shows
+          significant divergence (threshold above).
+
+      - tier: C
+        text: >
+          For example, models like GPT-4o and GPT-4o-mini, or Claude-3.5-Sonnet
+          and Claude-3.5-Haiku, LLaMA-3.0/3.1/3.3-70B-Instruct,
+          Phi-3-mini/medium-instruct, and Gemini-2.0-Flash/Pro, demonstrate
+          aligned behaviors across various benchmarks.
+        regeneration_rule: >
+          Regenerate from current data. Update family member names to reflect
+          current models in the dataset. If new family members have been added
+          (e.g. Claude-3.7-Sonnet, GPT-5), include them if their values align
+          with existing family members. If a new model diverges from its family,
+          exclude it and note in the regeneration that the family is less uniform.
+          Baseline GPT intra-gap = 0.007 on Universalism — very tight.
+
+      - tier: B
+        text: >
+          This can be attributed to the fact that a model's values and safety
+          are primarily shaped by its training data and alignment methods, which
+          are usually shared within a family of LLMs.
+        modification_rule: >
+          Preserve as explanatory mechanism when intra-family consistency holds.
+          If a family diverges significantly, modify to "models sharing training
+          infrastructure tend to exhibit similar value patterns, though exceptions
+          emerge as families expand".
+
+  - id: finding_2
+    title: "Inter-family variation in value alignment is greater than intra-family variation"
+
+    sentences:
+      - tier: A
+        text: >
+          Inter-family variation in value alignment is greater than intra-family
+          variation.
+        preservation_rule: >
+          Preserve verbatim if inter-family gap still clearly exceeds intra-family
+          gap. Baseline: o3-mini vs LLaMA Self-Direction inter-gap = 0.165,
+          LLaMA intra-gap = 0.04. As long as inter/intra ratio > 2, this holds.
+          Delete if intra-family variance grows to match inter-family variance.
+
+      - tier: C
+        text: >
+          For instance, o3-mini displays noticeably different value tendencies
+          compared to models in the Phi or LLaMA families, while models within
+          the Phi or LLaMA series are more consistent with one another.
+        regeneration_rule: >
+          Regenerate from current data. Pick the pair of families with the
+          largest inter-family gap to illustrate. Baseline: o3-mini (OpenAI
+          reasoning) vs LLaMA on Self-Direction is the clearest contrast.
+          If new models change this picture, find the current best contrast pair.
+          Verify intra-family spread < inter-family gap before writing.
+
+explicit_exclusions:
+  - Do not treat model family membership as a quality indicator.
+  - Do not assume all models in a family are interchangeable.
+  - Do not use intra-family consistency to imply one family is superior.

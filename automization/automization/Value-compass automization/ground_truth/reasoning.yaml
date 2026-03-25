@@ -1,0 +1,149 @@
+section: "Reasoning vs. Normal Model"
+part: 2
+
+# ── Baseline numerical anchors (from leaderboard_results_latest.xlsx) ──
+baseline_anchors:
+  # Finding 1 — Safety Taxonomy comparison
+  safety_taxonomy:
+    Claude-3.5-Sonnet: 98.21    # rank #5 overall — top non-reasoning model
+    o3-mini:           97.50    # rank #6
+    o1:                97.10
+    o1-mini:           79.97    # notably worse
+  # Finding 1 — MFT EVR comparison (lower = better)
+  mft_evr:
+    Claude-3.5-Sonnet: 59.11    # #1 — far ahead of all reasoning models
+    o1-mini:           83.06    # #3
+    o3-mini:           91.10    # much worse than Claude
+    GPT-4o:            93.18    # o3-mini (91.10) only marginally better than GPT-4o
+    DeepSeek-R1:       91.55    # worse than DeepSeek-V3 (88.97)
+    DeepSeek-V3:       88.97    # non-reasoning model BETTER than reasoning counterpart
+  # "Reasoning models consistently outperform" threshold:
+  #   ALL intra-family comparisons show reasoning model better by >= 5 pp on MFT EVR.
+  outperform_threshold_pp: 5.0
+  # Finding 2 — Schwartz total scores
+  # ⚠️  WARNING: this trend is NOT robust in baseline data:
+  #   DeepSeek-V3 (non-reasoning, 4.684) > DeepSeek-R1 (reasoning, 4.557)
+  #   o1-mini (reasoning, 4.446) < GPT-4o (non-reasoning, 4.510)
+  #   Only o3-mini (4.979) clearly elevates the reasoning average.
+  schwartz_totals:
+    o3-mini:     4.979   # reasoning — highest overall
+    o1:          4.639   # reasoning
+    GPT-4o:      4.510   # non-reasoning — HIGHER than o1-mini
+    DeepSeek-R1: 4.557   # reasoning
+    DeepSeek-V3: 4.684   # non-reasoning — HIGHER than DeepSeek-R1
+    o1-mini:     4.446   # reasoning — LOWER than GPT-4o
+
+findings:
+  - id: finding_1
+    title: "Reasoning enhanced LLMs show limited improvements in safety performance"
+
+    # CRITICAL — DELETE/REWRITE condition (TestSet 5 failure source):
+    #   This finding's core claim ("limited improvements") must be hard-deleted
+    #   and rewritten if reasoning models NOW clearly outperform.
+    #   "Clearly outperform" = ALL of the following intra-family comparisons
+    #   show reasoning model better by >= 5 pp on MFT EVR:
+    #     o3-mini better than GPT-4o by >= 5 pp  AND
+    #     DeepSeek-R1 better than DeepSeek-V3 by >= 5 pp
+    #   If this condition is met: DELETE "limited improvements" claim entirely
+    #   and generate a NEW insight about substantial safety improvement.
+    #   Do NOT keep "limited improvements" alongside a NEW insight saying the
+    #   opposite — they cannot coexist.
+    delete_condition: >
+      ALL intra-family reasoning comparisons show reasoning model better by
+      >= 5 pp on MFT EVR: o3-mini vs GPT-4o AND DeepSeek-R1 vs DeepSeek-V3.
+    adapt_condition: >
+      Some but not all intra-family comparisons favor reasoning models, OR
+      reasoning models narrow the gap but don't clearly outperform by >= 5 pp.
+      Use "mixed results" or "modest improvements" instead of "limited".
+
+    sentences:
+      - tier: A
+        text: >
+          Reasoning enhanced LLMs show limited improvements in their safety
+          performance.
+        preservation_rule: >
+          Preserve verbatim ONLY if reasoning models do NOT consistently
+          outperform their non-reasoning counterparts by >= 5 pp on MFT EVR.
+          Baseline: o3-mini (91.10) marginally better than GPT-4o (93.18) — tiny gap;
+          DeepSeek-R1 (91.55) WORSE than DeepSeek-V3 (88.97) — reasoning is inferior.
+          ADAPT (use "mixed results" or "modest improvements") if the gap is
+          closing but not yet crossed. HARD DELETE + REWRITE if delete_condition met.
+          "Limited improvements" and a NEW insight claiming "substantial improvements"
+          CANNOT both appear in the same report.
+
+      - tier: C
+        text: >
+          On both Safety Taxonomy and the more challenging Moral Foundation
+          Theory benchmarks, Claude-3.5-Sonnet consistently outperform
+          reasoning-based LLMs such as o1, o1-mini, o3-mini, and DeepSeek-R1.
+          Even within the same family—such as OpenAI's or DeepSeek's—reasoning-enhanced
+          variants do not always surpass their counterparts (e.g., o3-mini does
+          not clearly outperform GPT-4o, and DeepSeek-R1 does not consistently
+          exceed DeepSeek-V3).
+        regeneration_rule: >
+          Regenerate from current data. Update model names and intra-family
+          comparisons with current MFT EVR values.
+          Key checks: (1) Is Claude-3.5-Sonnet (or a successor) still #1 on MFT?
+          (2) Does o3-mini clearly outperform GPT-4o by >= 5 pp on MFT EVR?
+          (3) Does DeepSeek-R1 clearly outperform DeepSeek-V3 by >= 5 pp?
+          If (2) or (3) now holds with a >= 5 pp advantage, those comparisons
+          must be updated to reflect the improvement, not preserved as counter-examples.
+          If delete_condition is fully met, DELETE this sentence and flag for
+          REWRITE as a NEW insight.
+
+  - id: finding_2
+    title: "Reasoning enhanced LLMs tend to show slightly stronger value expression"
+
+    # ⚠️  FRAGILE FINDING — weak empirical support in baseline:
+    # DeepSeek-V3 (4.684) outscores DeepSeek-R1 (4.557) on Schwartz total.
+    # o1-mini (4.446) scores lower than GPT-4o (4.510).
+    # The "tendency" claim is driven primarily by o3-mini (4.979).
+    # If new data adds more counter-examples, this finding should be softened
+    # to "mixed results" or deleted entirely.
+    empirical_caveat: >
+      This finding is fragile. In the baseline, 2 of 3 intra-family reasoning
+      comparisons do NOT favor reasoning models (DeepSeek-R1 < V3; o1-mini < GPT-4o).
+      Only o3-mini clearly elevates the average. If new data adds further
+      counter-examples, soften to "mixed" or delete.
+    adapt_condition: >
+      More than half of intra-family reasoning comparisons show reasoning model
+      LOWER than non-reasoning counterpart on Schwartz total — soften "slightly
+      stronger" to "mixed results across families".
+    delete_condition: >
+      All or most intra-family comparisons show reasoning model lower than
+      non-reasoning counterpart on Schwartz total.
+
+    sentences:
+      - tier: A
+        text: >
+          Reasoning enhanced LLMs tend to show slightly stronger value
+          expression than standard LLMs.
+        preservation_rule: >
+          Preserve only if the majority of intra-family reasoning comparisons
+          favor reasoning models on Schwartz total, OR if reasoning models
+          average higher total across the dataset.
+          ⚠️ Baseline is fragile: o3-mini carries this trend; DeepSeek and
+          o1-mini do not support it. If new data weakens o3-mini's lead or
+          adds more counter-examples, use ADAPT → "tend to show mixed results
+          in value expression" or DELETE if clear reversal.
+
+      - tier: B
+        text: >
+          This may be attributed to enhanced reasoning capabilities, which
+          allow these models to better articulate and reflect value-laden
+          responses when prompted with value-evoking questions. As such,
+          reasoning-augmented LLMs may hold potential for improved cultural
+          or ethical alignment.
+        modification_rule: >
+          Preserve as explanatory hypothesis when the value expression
+          advantage holds (even weakly). If finding_2 is deleted, this
+          sentence is also deleted. If adapted to "mixed results", modify
+          to "some reasoning-augmented models may hold potential..."
+
+explicit_exclusions:
+  - Do not claim reasoning capability directly causes better value alignment.
+  - Do not assume reasoning-enhanced models are universally safer.
+  - Do not use "limited improvements" and "substantial improvements" in the
+    same report — they directly contradict each other.
+  - Do not preserve the "limited improvements" Tier A sentence if the
+    delete_condition is met — replace entirely, never append alongside.

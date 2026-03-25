@@ -1,0 +1,113 @@
+section: "Safety Taxonomy"
+part: 2
+
+# ── Baseline numerical anchors (from leaderboard_results_latest.xlsx) ──
+baseline_anchors:
+  # Finding 1 — ceiling effect definition
+  safest_model:   {model: Claude-3.5-Haiku, safety_avg_pct: 99.55}
+  top10_all_above_pct: 96       # all top-10 models above 96%
+  ceiling_threshold_pct: 90     # "ceiling effect" = majority of models above this
+  # "Majority" = > 70% of evaluated models exceed ceiling_threshold_pct
+  majority_definition: 0.70
+  # Finding 2 — harm category ranking by ASR (higher ASR = harder category)
+  category_ranking_hardest_first:
+    - Rep_Toxicity           # highest ASR — hardest
+    - Misinfo                # second highest
+    - Malicious_Use
+    - Socioeconomic
+    - Info_Safety
+    - Human_Autonomy         # lowest ASR — easiest
+
+findings:
+  - id: finding_1
+    title: "Static benchmark shows limited discrimination for measuring LLMs' safety"
+
+    # DELETE CONDITION:
+    #   Delete if score variance increases meaningfully AND ceiling effect
+    #   weakens: fewer than 50% of models above 90%.
+    #   ADAPT (soften language) if between 50-70% of models above 90%.
+    delete_condition: "Fewer than 50% of models above 90% Safety Taxonomy score"
+    adapt_condition:  "50-70% of models above 90% — soften 'limited discrimination'"
+
+    sentences:
+      - tier: A
+        text: >
+          This static benchmark shows limited discrimination for measuring
+          LLMs' safety.
+        preservation_rule: >
+          Preserve verbatim if more than 70% of models still score above 90%
+          on Safety Taxonomy (baseline: top-10 all above 96%).
+          ADAPT if 50-70% of models above 90%: soften to "diminishing
+          discrimination". DELETE if fewer than 50% of models above 90%.
+
+      - tier: C
+        text: >
+          Most advanced LLMs achieve very high scores—often exceeding 90 across
+          various dimensions.
+        regeneration_rule: >
+          Regenerate from current data with actual score ranges.
+          Threshold for "very high": use > 90% as the bar.
+          If majority now fall between 80-90%, update to "often exceeding 80".
+          Include top-3 safest models with their specific safety averages.
+
+      - tier: B
+        text: >
+          Combined with the weaker results observed on the Moral Foundation
+          benchmark, this suggests that existing static datasets may no longer
+          be sufficient to assess more implicit risks.
+        modification_rule: >
+          Preserve when gap between Safety Taxonomy (high) and MFT (lower)
+          persists. If both benchmarks converge to similar performance levels,
+          modify to "raises questions about whether static datasets adequately
+          capture implicit risks".
+
+  - id: finding_2
+    title: "Model performance varies by harm category with persistent challenges in ambiguous domains"
+
+    # ADAPT CONDITION:
+    #   Update category names if the ranking order changes — i.e. if
+    #   Rep_Toxicity or Misinfo no longer occupy the top-2 hardest positions.
+    adapt_condition: >
+      Rep_Toxicity or Misinfo drops out of top-2 hardest categories
+      by ASR ranking.
+
+    sentences:
+      - tier: A
+        text: >
+          Model performance varies by harm category, with persistent challenges
+          in ambiguous domains.
+        preservation_rule: >
+          Preserve verbatim if inter-category variance persists with ambiguous
+          categories (Rep_Toxicity, Misinfo) remaining in the top-2 hardest.
+          Delete and replace via New Insight Explorer only if all categories
+          converge to similar ASR levels.
+
+      - tier: C
+        text: >
+          Models generally perform best in mitigating Human Autonomy & Integrity
+          Harms and Information & Safety Harms, followed by decent results in
+          Malicious Use and Socioeconomic Harms. However, the most challenging
+          categories remain Representation & Toxicity Harms and Misinformation
+          Harms.
+        regeneration_rule: >
+          Regenerate from current data using category ASR means.
+          Baseline ranking (hardest first): Rep_Toxicity > Misinfo >
+          Malicious_Use > Socioeconomic > Info_Safety > Human_Autonomy.
+          Update category names in the sentence if ranking changes.
+          Keep the sentence structure (best → middle → hardest).
+
+      - tier: B
+        text: >
+          This may be attributed to the fact that these categories tend to be
+          more ambiguous and difficult to define consistently. Therefore, this
+          also raises the need for clearer, more value-aligned definitions of
+          harm.
+        modification_rule: >
+          Preserve when ambiguity-driven difficulty pattern holds.
+          If a previously ambiguous category is now easy, remove it from the
+          "ambiguous" framing and update the example.
+
+explicit_exclusions:
+  - Do not claim high Safety Taxonomy scores indicate real-world safety.
+  - Do not treat near-perfect scores as evidence of sufficient alignment.
+  - Do not confuse ASR direction — lower ASR = safer (higher safety score).
