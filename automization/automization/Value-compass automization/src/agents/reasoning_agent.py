@@ -159,12 +159,42 @@ class ReasoningAgent:
         f3 = changes.get("overall_f3", {})
         f4 = changes.get("overall_f4", {})
 
+        # --- OV-1 Spearman alignment stats ---
+        n_well   = s.get("n_well_aligned_models", 0)
+        n_total  = s.get("n_total_models_spearman", 0)
+        pct_well = s.get("well_aligned_model_pct", 0)
+        mean_rho = s.get("mean_model_baseline_spearman")
+        agg_rho  = s.get("aggregate_baseline_spearman")
+
+        # Human-readable summary: "X / Y models (Z%) are well-aligned (Spearman > 0.7)"
+        if n_total > 0:
+            f1_alignment_summary = (
+                f"{n_well}/{n_total} models ({pct_well}%) have Spearman > 0.7 "
+                f"with the pan-cultural baseline "
+                f"(mean Spearman={mean_rho}, aggregate Spearman={agg_rho})"
+            )
+            f1_majority_aligned = pct_well >= 50.0
+        else:
+            f1_alignment_summary = "(Spearman data unavailable)"
+            f1_majority_aligned  = True  # default: preserve existing claim
+
+        # Well-aligned models that also have Uni/Ben/Sec in top-4
+        safety_top = s.get("models_with_safety_dims_in_top4", [])
+
         return {
             # Finding 1 — Schwartz ordering
             "f1_status":           f1.get("status", "KEEP"),
             "f1_dimension_order":  s.get("dimension_ranking", {}).get("ordered", []),
             "f1_pan_cultural_holds": s.get("pan_cultural_order_holds", True),
             "f1_safety_dim_leaders": _fmt_models(s.get("safety_dim_leaders", [])),
+            "f1_alignment_summary":  f1_alignment_summary,
+            "f1_majority_aligned":   f1_majority_aligned,
+            "f1_well_aligned_models": _fmt_list(s.get("well_aligned_models", [])[:6]),
+            "f1_safety_top_models":   _fmt_list(safety_top[:6]),
+            "f1_pan_cultural_baseline": (
+                "Human baseline order: Universalism > Benevolence > Self-Direction > Security "
+                "> Conformity > Achievement > Tradition > Stimulation > Hedonism > Power"
+            ),
 
             # Finding 2 — Western bias (FREEZE)
             "f2_status":           "FREEZE",
@@ -208,26 +238,7 @@ class ReasoningAgent:
             if info:
                 leader_lines.append(f"{dim}: {info.get('model')} ({info.get('value')})")
 
-        # Bug #2 fix: provide authoritative top-3 for F2 as explicit replacement directives.
-        # The LLM must use these exact names — no approximation.
-        top3_entries = s.get("model_total_ranking", [])[:3]
-        top3_names   = [e["model"] for e in top3_entries]
-        top3_auth_str = ", ".join(
-            f"{e['model']} (total={e.get('value', '?')})" for e in top3_entries
-        )
-
-        # Bug #4 fix: when Schwartz hierarchy is SIGNIFICANTLY_CHANGED, suppress
-        # any sentence that asserts the old pan-cultural ordering as still valid.
-        suppressed_phrases: List[str] = []
-        if f1.get("status") == "SIGNIFICANTLY_CHANGED":
-            suppressed_phrases = [
-                "Universalism, Benevolence, Security, and Self-Direction consistently emerge",
-                "prioritize Universalism",
-                "reflecting a hierarchy that mirrors pan-cultural human value surveys",
-                "a hierarchical order similar to the pan-cultural baseline",
-            ]
-
-        result: Dict[str, Any] = {
+        return {
             "f1_status":          f1.get("status", "REFRESH_EXAMPLES"),
             "f1_dimension_order": ordered,
             "f1_dim_leaders":     leader_lines,
@@ -237,20 +248,10 @@ class ReasoningAgent:
                 f"Universalism leader: {leaders.get('Universalism', {}).get('model')}"
             ),
 
-            "f2_status":                  f2.get("status", "REFRESH_EXAMPLES"),
-            "f2_top3":                    _fmt_models(top3_entries),
-            "f2_full_rank":               _fmt_models(s.get("model_total_ranking", []), max_n=6),
-            # Bug #2: authoritative top-3 — LLM must use exactly these names in F2
-            "f2_top3_authoritative":      top3_auth_str,
-            "f2_top3_names_only":         ", ".join(top3_names),
-            "f2_MANDATORY_note": (
-                f"Finding 2 MUST name exactly these top-3 models: {', '.join(top3_names)}. "
-                "Do NOT use any other model names as 'top performers' in this finding."
-            ),
+            "f2_status":     f2.get("status", "REFRESH_EXAMPLES"),
+            "f2_top3":       _fmt_models(s.get("model_total_ranking", [])[:3]),
+            "f2_full_rank":  _fmt_models(s.get("model_total_ranking", []), max_n=6),
         }
-        if suppressed_phrases:
-            result["f1_suppressed_phrases"] = suppressed_phrases
-        return result
 
     # ------------------------------------------------------------------ mft
     def _guide_mft(
@@ -259,12 +260,12 @@ class ReasoningAgent:
         changes:   Dict[str, Any],
     ) -> Dict[str, Any]:
         m  = analytics.get("mft", {})
-        r  = analytics.get("risk", {})
         f1 = changes.get("mft_f1", {})
         f2 = changes.get("mft_f2", {})
 
         # Summarise per-model weak dims for family-level patterns
         weak_dims = m.get("model_weak_dimensions", {})
+        # Group by weak dimension
         dim_to_models: Dict[str, List[str]] = {}
         for model, dim in weak_dims.items():
             dim_to_models.setdefault(dim, []).append(model)
@@ -273,15 +274,9 @@ class ReasoningAgent:
             for dim, models in list(dim_to_models.items())[:4]
         )
 
-        # Bug #3 fix: explicitly identify MFT champion vs. Safety champion
-        # so they cannot be swapped. These come from different sheets.
-        mft_best   = m.get("best_model", "")       # lowest EVR — from MFT sheet
-        safety_top = r.get("top_safety_models", [])
-        safety_best = safety_top[0]["model"] if safety_top else ""  # from Risk sheet
-
         return {
             "f1_status":       f1.get("status", "REFRESH_EXAMPLES"),
-            "f1_best_model":   mft_best,
+            "f1_best_model":   m.get("best_model"),
             "f1_best_evr":     m.get("best_evr_avg"),
             "f1_runner_up":    m.get("runner_up_model"),
             "f1_runner_up_evr": m.get("runner_up_evr_avg"),
@@ -294,15 +289,6 @@ class ReasoningAgent:
             "f2_easiest_dims":      _fmt_list(m.get("easiest_dimensions", [])),
             "f2_family_weak_dims":  family_weak_summary,
             "f2_dim_evr_means":     m.get("dimension_evr_means", {}),
-            # Bug #3: explicit guard — MFT and Safety champions are DIFFERENT models
-            "f2_mft_champion":      mft_best,
-            "f2_benchmark_warning": (
-                f"CRITICAL: MFT champion (lowest EVR) = '{mft_best}'. "
-                f"Safety Taxonomy champion (highest safety score) = '{safety_best}'. "
-                f"These are TWO DIFFERENT models from TWO DIFFERENT benchmarks. "
-                f"MFT findings (F1, F2) MUST use '{mft_best}', NOT '{safety_best}'. "
-                f"Safety findings use '{safety_best}'. Never swap them."
-            ),
         }
 
     # ------------------------------------------------------------------ safety
@@ -346,7 +332,7 @@ class ReasoningAgent:
             for p in pairs
         )
 
-        result: Dict[str, Any] = {
+        return {
             "f1_status":       f1.get("status", "KEEP"),
             "f1_bias_holds":   f.get("user_oriented_bias_holds", True),
             "f1_pair_summary": pair_summary,
@@ -354,28 +340,6 @@ class ReasoningAgent:
             "f2_status":     f2.get("status", "REFRESH_EXAMPLES"),
             "f2_top_models": _fmt_models(f.get("model_ranking", [])[:3]),
         }
-
-        # Bug #4 fix: when user-oriented bias has REVERSED, the L1 sentence
-        # "While this tendency may enhance user-perceived helpfulness..." describes
-        # a tendency that no longer exists. Suppress it to prevent contradiction.
-        if f1.get("status") == "SIGNIFICANTLY_CHANGED" and not f.get("user_oriented_bias_holds", True):
-            result["f1_suppressed_phrases"] = [
-                "While this tendency may enhance user-perceived helpfulness",
-                "this tendency may enhance user-perceived helpfulness and friendliness",
-                "it also introduces potential risks\u2014such as generating hallucinated responses",
-                "user-oriented values",
-                "prioritizing user-oriented",
-                "user-oriented bias",
-            ]
-            result["f1_reversal_note"] = (
-                "The user-oriented bias has REVERSED. Any sentence describing "
-                "'this tendency' (user-oriented preference) as still present is "
-                "FACTUALLY WRONG. Delete or rewrite those sentences. Do NOT write "
-                "'While this tendency may enhance helpfulness...' when the tendency "
-                "no longer exists in the data."
-            )
-
-        return result
 
     # ------------------------------------------------------------------ open_closed
     def _guide_open_closed(
@@ -396,45 +360,14 @@ class ReasoningAgent:
             f"{k}: Schwartz_total={v}" for k, v in by_type_schwartz.items()
         )
 
-        # Bug #1 fix: provide type-validated open-source low scorers from Model Info.
-        # These are the ONLY models that can be cited as 'open-source low scorers' in F2.
-        open_low = analytics.get("open_low_scorers", [])
-        open_low_names = [e["model"] for e in open_low]
-        open_low_str = ", ".join(
-            f"{e['model']} (total={e.get('schwartz_total', '?')})" for e in open_low
-        )
-
-        result: Dict[str, Any] = {
+        return {
             "f1_status":          f1.get("status", "KEEP"),
             "f1_evr_by_type":     evr_summary,
             "f1_gap_note":        f1.get("reason", ""),
 
-            "f2_status":           f2.get("status", "REFRESH_EXAMPLES"),
+            "f2_status":          f2.get("status", "REFRESH_EXAMPLES"),
             "f2_schwartz_by_type": schwartz_summary,
-            # Bug #1: type-validated open low scorers
-            "f2_open_low_scorers": open_low_str if open_low_str else "(none found)",
-            "f2_MANDATORY_note": (
-                f"Finding 2 MUST cite open-source models as low scorers ONLY from this "
-                f"type-validated list (Type=Open confirmed via Model Info): {open_low_str}. "
-                "DO NOT cite GPT-4-Turbo, Claude-3.5-Sonnet, GLM-4, or any other "
-                "Close-type model as an 'open-source low scorer'. "
-                "Verify every model you name is actually Type=Open."
-            ),
         }
-
-        # Add phantom models: Close-type models that should never appear as open-source examples
-        # These are the known Close models that have appeared incorrectly in past reports.
-        known_close_phantom = []
-        if any("gpt-4-turbo" in m["model"].lower() for m in open_low) is False:
-            known_close_phantom += ["GPT-4-Turbo"]
-        if any("claude" in m["model"].lower() for m in open_low) is False:
-            known_close_phantom += ["Claude-3.5-Sonnet", "Claude-3.5-Haiku"]
-        if any("glm" in m["model"].lower() for m in open_low) is False:
-            known_close_phantom += ["GLM-4"]
-        if known_close_phantom:
-            result["f2_phantom_models"] = known_close_phantom
-
-        return result
 
     # ------------------------------------------------------------------ families
     def _guide_families(

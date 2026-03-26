@@ -164,12 +164,8 @@ Use plain ASCII text only.
 
     def _replacement_instructions_block(self) -> str:
         """
-        Renders:
-          1. Explicit old->new model name replacement instructions (from verifier)
-          2. Banned model names (phantom models not in new dataset)
-          3. Suppressed phrases (L1 sentences invalidated by trend reversal — Bug #4)
-          4. Mandatory notes from reasoning guide (Bug #1 open-source validation,
-             Bug #2 Schwartz F2 authoritative top-3, Bug #3 MFT/Safety disambiguation)
+        Renders explicit old->new model name replacement instructions and
+        a banned names list for the LLM prompt.
         """
         rs = self.reasoning_summary
         if not isinstance(rs, dict):
@@ -177,8 +173,6 @@ Use plain ASCII text only.
 
         replace_lines: list = []
         banned: list = []
-        suppressed: list = []
-        mandatory_notes: list = []
         finding_labels = {
             "f1_status": "Finding 1",
             "f2_status": "Finding 2",
@@ -187,8 +181,8 @@ Use plain ASCII text only.
             "f5_status": "Finding 5",
         }
 
+        # Collect replacements from reasoning_summary keys like f1_replacements, f2_replacements
         for key, val in rs.items():
-            # Old->new name replacements (from verifier)
             if key.endswith("_replacements") and isinstance(val, list) and val:
                 finding_key = key.replace("_replacements", "")
                 status_key = finding_key + "_status"
@@ -200,71 +194,37 @@ Use plain ASCII text only.
                         f'  OLD: "{r.get("old")}"  ->  NEW: "{r.get("new")}"'
                         f'  ({r.get("context", "")})'
                     )
-
-            # Phantom model names (Bug #1: Close models wrongly cited as Open)
             if key.endswith("_phantom_models") and isinstance(val, list) and val:
                 banned.extend(val)
 
-            # Bug #4: suppressed phrases from L1 sentences whose prerequisite reversed
-            if key.endswith("_suppressed_phrases") and isinstance(val, list) and val:
-                suppressed.extend(val)
-
-            # Bug #1/2/3: mandatory notes added by reasoning guides
-            if key.endswith("_MANDATORY_note") and isinstance(val, str) and val:
-                mandatory_notes.append(val)
-
-            # Bug #3: benchmark disambiguation warning
-            if key == "f2_benchmark_warning" and isinstance(val, str) and val:
-                mandatory_notes.append(val)
-
-            # Bug #4: reversal note
-            if key.endswith("_reversal_note") and isinstance(val, str) and val:
-                mandatory_notes.append(val)
-
+        # Deduplicate banned list
         banned = sorted(set(banned))
-        suppressed = list(dict.fromkeys(suppressed))  # deduplicate, preserve order
 
-        if not replace_lines and not banned and not suppressed and not mandatory_notes:
+        if not replace_lines and not banned:
             return ""
 
-        lines = ["### MANDATORY WRITING CONSTRAINTS",
+        lines = ["### MANDATORY REPLACEMENT INSTRUCTIONS",
                  "",
-                 "CRITICAL: Read every rule below before writing a single word.",
+                 "CRITICAL: Apply every replacement below EXACTLY.",
+                 "These are computed from the new benchmark data.",
+                 "Any sentence still containing an OLD model name after replacement is WRONG.",
                  ""]
 
-        if mandatory_notes:
-            lines += ["#### Data-Enforced Rules (computed from current benchmark data)"]
-            for note in mandatory_notes:
-                lines.append(f"- {note}")
-            lines.append("")
-
         if replace_lines:
-            lines += [
-                "#### Model Name Replacements (apply exactly)",
-                "Any sentence containing an OLD model name after replacement is WRONG.",
-            ]
             lines.extend(replace_lines)
-            lines.append("")
 
         if banned:
             lines += [
-                "#### BANNED MODEL NAMES (must not appear as open-source low scorers)",
-                "These models are Type=Close. DO NOT cite them as open-source examples.",
+                "",
+                "### BANNED MODEL NAMES",
+                "The following models are NOT present in the new dataset.",
+                "They MUST NOT appear in any data-driven sentence, example, or ranking.",
+                "If you find yourself writing one of these names, STOP and replace",
+                "it with the correct model from the current data.",
                 "",
             ]
             for m in banned:
                 lines.append(f"  - {m}")
-            lines.append("")
-
-        if suppressed:
-            lines += [
-                "#### SUPPRESSED PHRASES (trend has reversed — these sentences are now WRONG)",
-                "The following phrases describe a trend that no longer holds in current data.",
-                "DO NOT write these phrases. If they appear in the ground truth, skip or rewrite them.",
-                "",
-            ]
-            for phrase in suppressed:
-                lines.append(f'  - "{phrase}"')
 
         return "\n".join(lines)
 
