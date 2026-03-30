@@ -26,6 +26,26 @@ Automatically generates the **Value Compass Benchmark** research report from Exc
 
 ---
 
+## Current Limitation: Figures Not Included
+
+**All benchmark figures (heatmaps, radar charts, bar plots) are currently absent from the generated report.** The `Visualization_agent` module (`src/agents/Visualization_agent.py`) exists in the codebase but is not connected to the pipeline and does not produce output. This is because the figure-generation logic depends on processed data formats that have not yet been fully specified.
+
+**Action required from the human researcher every cycle:** Insert all benchmark figures manually into the final PDF before publication. The figures needed are referenced by the section text (e.g. "as shown in the figure below") and are expected at the following locations in the report:
+
+- Part 1 OV-F1: Schwartz value dimension bar chart (aggregate mean scores across all models)
+- Part 1 OV-F2: Country-level Schwartz similarity heatmap (models × countries)
+- Part 2 Schwartz: Radar chart of dimension scores per model group
+- Part 2 MFT: EVR bar chart per dimension, sorted by difficulty
+- Part 2 Safety: ASR bar chart per harm category
+- Part 2 FULVA: Paired bar chart of user-oriented vs. counterpart-oriented dimensions
+- Part 2 Proprietary vs. Open: Grouped comparison bar charts
+- Part 2 Families: Intra-family score cluster plot
+- Part 2 Reasoning: Side-by-side comparison of reasoning vs. standard models
+
+**If automated figure generation is needed in future:** the `Visualization_agent` can be extended to produce these figures from the analytics object and embed them into the report. The analytics data required for each figure is already computed by `src/pipeline/analytics.py` — the remaining work is to implement the plotting calls in `Visualization_agent` and wire it into `orchestrator.py` after step [3] (plot generation).
+
+---
+
 ## What This Pipeline Produces
 
 Each pipeline run produces **two output files** for every benchmark round:
@@ -76,7 +96,7 @@ Without automation, producing each benchmark report requires a researcher to:
 1. Compute rankings, means, and comparisons across ~30 models and 4 frameworks
 2. Check whether each of the ~19 core findings still holds
 3. Identify which model names, scores, and example pairs need updating
-4. Detect new patterns worth reporting
+4. Detect new patterns worth reporting (currently, the pipeline instructs the LLM to generate exactly **two `[NEW]` findings per section**, regardless of whether strong new patterns exist in the data. These appear with a `[NEW]` prefix in the report and are candidates only — the human researcher decides after review whether to keep, revise, or discard each one before publication)
 5. Rewrite affected paragraphs while maintaining the original analytical voice
 
 **The pipeline handles steps 1–4 fully automatically**, and produces first-draft text for step 5 that typically requires only targeted edits rather than full rewrites. Across test evaluations, the pipeline correctly handles approximately **70–75% of all finding updates** without any human correction needed. The remaining 25–30% require researcher attention, concentrated in the specific areas described in the [Known Weaknesses](#known-weaknesses--where-to-focus-your-review) section below.
