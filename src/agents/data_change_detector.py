@@ -126,10 +126,7 @@ class FindingChangeDetector:
         changes["propclosed_f2"] = self._prop_f2_schwartz_gap(new_analytics)
 
         # ---- Part 2: Family findings ----
-        changes["families_f1"] = {
-            "status": "REFRESH_EXAMPLES",
-            "reason": "Family member examples must always reflect current model list.",
-        }
+        changes["families_f1"] = self._families_f1_consistency(new_analytics)
         changes["families_f2"] = {
             "status": "REFRESH_EXAMPLES",
             "reason": "Inter/intra-family contrast examples must use current data.",
@@ -349,23 +346,27 @@ class FindingChangeDetector:
             key_dims = ["Self-direction", "Conformity", "Universalism", "Stimulation"]
 
             any_meaningful_change = False
+            n_leaders_changed = 0
+            max_leader_margin = 0.0
             for dim in key_dims:
                 new_info = leaders.get(dim, {})
                 old_info = old_leaders.get(dim, {})
 
                 new_model = new_info.get("model") if isinstance(new_info, dict) else new_info
                 old_model = old_info.get("model") if isinstance(old_info, dict) else old_info
+                margin = new_info.get("margin") if isinstance(new_info, dict) else None
+                if margin is not None and margin > max_leader_margin:
+                    max_leader_margin = margin
 
                 if old_model and new_model and old_model != new_model:
                     # Only flag change if the new leader's margin >= MIN_LEADERSHIP_MARGIN
-                    margin = new_info.get("margin") if isinstance(new_info, dict) else None
                     if margin is not None and margin >= self.MIN_LEADERSHIP_MARGIN:
                         any_meaningful_change = True
-                        break
+                        n_leaders_changed += 1
                     elif margin is None:
                         # No margin data — conservatively treat as changed
                         any_meaningful_change = True
-                        break
+                        n_leaders_changed += 1
 
             if not any_meaningful_change:
                 return {
@@ -374,6 +375,28 @@ class FindingChangeDetector:
                     "dimension_leaders": leaders,
                     "dimension_order": s.get("dimension_ranking", {}).get("ordered", []),
                 }
+
+            # Build a qualifier note so the writer knows to update the title's scale word
+            title_qualifier_note = None
+            if n_leaders_changed >= 2 or max_leader_margin > 0.1:
+                title_qualifier_note = (
+                    f"{n_leaders_changed}/{len(key_dims)} key dimension leaders have changed "
+                    f"(largest margin={max_leader_margin:.3f}). "
+                    f"The Tier A title qualifier 'subtle preference differences' may "
+                    f"understate the actual variation. "
+                    f"If the new body examples show leaders with large margins, "
+                    f"replace 'subtle' with 'notable' in the title sentence."
+                )
+
+            return {
+                "status": "REFRESH_EXAMPLES",
+                "reason": "Pan-cultural trend holds; update per-model dimension leaders.",
+                "dimension_leaders": leaders,
+                "dimension_order": s.get("dimension_ranking", {}).get("ordered", []),
+                "n_leaders_changed": n_leaders_changed,
+                "max_leader_margin": round(max_leader_margin, 3),
+                "title_qualifier_note": title_qualifier_note,
+            }
 
         return {
             "status": "REFRESH_EXAMPLES",
@@ -503,23 +526,118 @@ class FindingChangeDetector:
     # FULVA findings
     # ------------------------------------------------------------------
 
+    # Family findings
+    # ------------------------------------------------------------------
+
+    _MAJOR_FAMILIES = {"openai", "anthropic", "google", "meta", "microsoft",
+                       "gpt", "claude", "gemini", "llama", "phi"}
+
+    def _families_f1_consistency(self, a: Dict) -> Dict[str, Any]:
+        """
+        Check intra-family Schwartz consistency from current data.
+        Returns SIGNIFICANTLY_CHANGED if a major family diverges (spread > 0.20).
+        Returns REFRESH_EXAMPLES with validated consistent_families list otherwise.
+        """
+        cs = a.get("cross_section", {})
+        consistent   = cs.get("consistent_families", [])
+        diverging    = cs.get("diverging_families", [])
+        consistency  = cs.get("family_consistency", {})
+
+        # Check if any major family is in the diverging list
+        major_diverging = [
+            f for f in diverging
+            if any(m in f.lower() for m in self._MAJOR_FAMILIES)
+        ]
+
+        if major_diverging:
+            details = "; ".join(
+                f"{f} (max_spread={consistency.get(f, {}).get('max_spread', '?')})"
+                for f in major_diverging
+            )
+            return {
+                "status": "SIGNIFICANTLY_CHANGED",
+                "reason": (
+                    f"Major family divergence detected: {details}. "
+                    "Intra-family spread exceeds 0.20 — delete condition triggered. "
+                    "Do NOT claim these families show consistent patterns."
+                ),
+                "major_diverging_families": major_diverging,
+                "consistent_families": consistent,
+            }
+
+        if not consistent and not consistency:
+            # No family data available — fall back to refresh
+            return {
+                "status": "REFRESH_EXAMPLES",
+                "reason": "Family consistency data unavailable; update examples from current model list.",
+            }
+
+        return {
+            "status": "REFRESH_EXAMPLES",
+            "reason": (
+                f"Intra-family consistency validated. "
+                f"Consistent families (spread ≤ 0.15): {consistent or 'none verified'}. "
+                f"Use ONLY these families as positive consistency examples."
+            ),
+            "consistent_families": consistent,
+            "diverging_families":  diverging,
+        }
+
+    # FULVA findings
+    # ------------------------------------------------------------------
+
     def _fulva_f1_user_bias(self, a: Dict) -> Dict[str, Any]:
         f = a.get("fulva", {})
         holds  = f.get("user_oriented_bias_holds", True)
         pairs  = f.get("pair_comparisons", [])
         n_ok   = f.get("n_pairs_direction_correct", len(pairs))
 
-        if holds:
+        # --- Dual-threshold check for Ethical vs Professional ---
+        # Direction alone is insufficient: gap must be > 0.05 AND
+        # > 65% of models must show Ethical > Professional individually.
+        eth_pro_weak = False
+        eth_pro_note = ""
+        for p in pairs:
+            if "Ethical" in p.get("pair", "") and "Professional" in p.get("pair", ""):
+                gap      = p.get("gap", 1.0)
+                n_pos    = p.get("models_with_positive_gap", 0)
+                n_total  = p.get("total_models", 1)
+                pct_pos  = n_pos / n_total if n_total > 0 else 0.0
+                if gap <= 0.05 or pct_pos <= 0.65:
+                    eth_pro_weak = True
+                    eth_pro_note = (
+                        f"Ethical-Professional gap={gap:.3f} (threshold >0.05), "
+                        f"{n_pos}/{n_total} models positive ({pct_pos:.0%}, threshold >65%). "
+                        "Claim 'Ethical over Professional is a consistent trend' is NOT supported — "
+                        "weaken or remove this sub-clause."
+                    )
+                break
+
+        if holds and not eth_pro_weak:
             return {
                 "status": "KEEP",
-                "reason": "User-oriented bias direction holds for all three pairs.",
+                "reason": "User-oriented bias direction holds for all three pairs with sufficient magnitude.",
                 "pair_comparisons": pairs,
             }
+
+        if eth_pro_weak and holds:
+            # Other pairs OK but Ethical/Professional is too weak to claim as consistent
+            return {
+                "status": "ADAPT",
+                "reason": eth_pro_note,
+                "pair_comparisons": pairs,
+                "weaken_ethical_professional": True,
+            }
+
         return {
             "status": "ADAPT" if n_ok > 0 else "SIGNIFICANTLY_CHANGED",
-            "reason": f"Only {n_ok}/{len(pairs)} pairs show expected direction.",
+            "reason": (
+                f"Only {n_ok}/{len(pairs)} pairs show expected direction."
+                + (f" Also: {eth_pro_note}" if eth_pro_weak else "")
+            ),
             "pair_comparisons": pairs,
             "failed_pairs": [p["pair"] for p in pairs if not p.get("direction_holds")],
+            **({"weaken_ethical_professional": True} if eth_pro_weak else {}),
         }
 
     def _fulva_f2_top_models(

@@ -11,6 +11,7 @@ from src.pipeline.analytics import (
 )
 from src.pipeline.plot import generate_all_plots
 from src.pipeline.export_pdf import save_as_pdf
+from src.pipeline.annotated_report import save_annotated_pdf
 
 from src.agents.ground_truth_store import (
     GroundTruthStore,
@@ -45,7 +46,7 @@ SECTION_WRITER_MAP = {
 }
 
 # Canonical baseline path — always compared against new data
-BASELINE_EXCEL_PATH = "data/leaderboard_results_latest.xlsx"
+BASELINE_EXCEL_PATH = "data/leaderboard_results_baseline.xlsx"
 
 
 def run_pipeline(
@@ -146,6 +147,7 @@ def run_pipeline(
     # -------------------------------------------------------------------------
     report_sections = []
     report_sections.append("# Insights about LLMs Values from the Value Compass Benchmarks\n")
+    section_map: dict = {}   # {section_key: section_md} — for annotated report
 
     # Part 1: Overall findings
     for section_key in PART1_SECTIONS:
@@ -167,6 +169,7 @@ def run_pipeline(
 
         section_md = writer.write()
         report_sections.append(section_md)
+        section_map[section_key] = section_md
 
     # Part 2: Detailed Evaluation Results
     report_sections.append("## 2. Detailed Evaluation Results on Diverse Value Systems and LLMs\n")
@@ -190,6 +193,7 @@ def run_pipeline(
 
         section_md = writer.write()
         report_sections.append(section_md)
+        section_map[section_key] = section_md
 
     # -------------------------------------------------------------------------
     # 10. Assemble full report
@@ -197,9 +201,23 @@ def run_pipeline(
     report_md = "\n\n".join(report_sections)
 
     # -------------------------------------------------------------------------
-    # 11. Export report
+    # 11. Export main report
     # -------------------------------------------------------------------------
     save_as_pdf(report_md, output_path)
+
+    # -------------------------------------------------------------------------
+    # 12. Export annotated change-analysis report (separate PDF)
+    # -------------------------------------------------------------------------
+    annotated_path = output_path.replace(".pdf", "_Annotated.pdf")
+    try:
+        save_annotated_pdf(
+            section_map=section_map,
+            all_gt=all_gt,
+            finding_changes=finding_changes,
+            output_path=annotated_path,
+        )
+    except Exception as exc:
+        print(f"[orchestrator] Warning: annotated report failed: {exc}")
 
     return report_md
 

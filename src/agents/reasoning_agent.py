@@ -238,7 +238,7 @@ class ReasoningAgent:
             if info:
                 leader_lines.append(f"{dim}: {info.get('model')} ({info.get('value')})")
 
-        return {
+        result = {
             "f1_status":          f1.get("status", "REFRESH_EXAMPLES"),
             "f1_dimension_order": ordered,
             "f1_dim_leaders":     leader_lines,
@@ -252,6 +252,13 @@ class ReasoningAgent:
             "f2_top3":       _fmt_models(s.get("model_total_ranking", [])[:3]),
             "f2_full_rank":  _fmt_models(s.get("model_total_ranking", []), max_n=6),
         }
+
+        # Surface title qualifier note when leaders have changed substantially
+        qualifier_note = f1.get("title_qualifier_note")
+        if qualifier_note:
+            result["f1_title_qualifier_note"] = qualifier_note
+
+        return result
 
     # ------------------------------------------------------------------ mft
     def _guide_mft(
@@ -332,7 +339,7 @@ class ReasoningAgent:
             for p in pairs
         )
 
-        return {
+        result = {
             "f1_status":       f1.get("status", "KEEP"),
             "f1_bias_holds":   f.get("user_oriented_bias_holds", True),
             "f1_pair_summary": pair_summary,
@@ -340,6 +347,12 @@ class ReasoningAgent:
             "f2_status":     f2.get("status", "REFRESH_EXAMPLES"),
             "f2_top_models": _fmt_models(f.get("model_ranking", [])[:3]),
         }
+
+        if f1.get("weaken_ethical_professional"):
+            result["f1_weaken_ethical_professional"] = True
+            result["f1_weaken_reason"] = f1.get("reason", "")
+
+        return result
 
     # ------------------------------------------------------------------ open_closed
     def _guide_open_closed(
@@ -360,6 +373,8 @@ class ReasoningAgent:
             f"{k}: Schwartz_total={v}" for k, v in by_type_schwartz.items()
         )
 
+        open_low_scorers = cs.get("open_low_scorers", [])
+
         return {
             "f1_status":          f1.get("status", "KEEP"),
             "f1_evr_by_type":     evr_summary,
@@ -367,6 +382,7 @@ class ReasoningAgent:
 
             "f2_status":          f2.get("status", "REFRESH_EXAMPLES"),
             "f2_schwartz_by_type": schwartz_summary,
+            "open_low_scorers":   open_low_scorers,
         }
 
     # ------------------------------------------------------------------ families
@@ -388,15 +404,25 @@ class ReasoningAgent:
             for dev, models in list(dev_groups.items())[:6]
         )
 
-        return {
-            "f1_status": "REFRESH_EXAMPLES",
-            "f2_status": "REFRESH_EXAMPLES",
-            "family_summary": family_summary,
-            "instruction": (
-                "Update all model family examples using the current model list above. "
-                "Preserve the core finding that intra-family variance < inter-family variance."
-            ),
+        f1 = changes.get("families_f1", {})
+        f2 = changes.get("families_f2", {})
+
+        consistent  = f1.get("consistent_families", [])
+        diverging   = f1.get("diverging_families",  [])
+
+        result = {
+            "f1_status":          f1.get("status", "REFRESH_EXAMPLES"),
+            "f1_note":            f1.get("reason", ""),
+            "f2_status":          f2.get("status", "REFRESH_EXAMPLES"),
+            "family_summary":     family_summary,
+            "consistent_families": consistent,
         }
+
+        if diverging:
+            result["diverging_families"] = diverging
+            result["major_diverging"]    = f1.get("major_diverging_families", [])
+
+        return result
 
     # ------------------------------------------------------------------ reasoning
     def _guide_reasoning(

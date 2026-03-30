@@ -1,5 +1,8 @@
+import re
 from typing import Dict, Any, List, Optional
 from .base_section_writer import BaseSectionWriter
+
+FROZEN_F2_MARKER = "[Heatmap data missing - manual replacement required later]"
 
 
 class OverviewSectionWriter(BaseSectionWriter):
@@ -68,3 +71,33 @@ class OverviewSectionWriter(BaseSectionWriter):
             "'f1_well_aligned_models', 'f1_safety_top_models') to verify whether this claim "
             "still holds and to update any model-specific examples accordingly.\n"
         )
+
+    def write(self) -> str:
+        """Generate section, then replace Finding 2 with frozen GT text."""
+        generated = super().write()
+        frozen_f2 = self._build_frozen_finding_2()
+        if not frozen_f2:
+            return generated
+
+        # Match "Finding 2:" up to (but not including) "Finding 3:" or end of string
+        pattern = re.compile(
+            r'(Finding 2\s*:.*?)(?=Finding 3\s*:|$)',
+            re.DOTALL | re.IGNORECASE,
+        )
+        replaced = pattern.sub(frozen_f2, generated, count=1)
+        return replaced
+
+    def _build_frozen_finding_2(self) -> str:
+        """Construct Finding 2 verbatim from ground truth sentences + marker."""
+        findings = self.ground_truth.get("findings", [])
+        f2 = next((f for f in findings if f.get("id") == "finding_2"), None)
+        if not f2:
+            return ""
+        title = f2.get("title", "Most LLMs demonstrate a clear bias towards Western cultural values")
+        sentences = [
+            s.get("text", "").strip()
+            for s in f2.get("sentences", [])
+            if s.get("text", "").strip()
+        ]
+        body = " ".join(sentences)
+        return f"Finding 2: {title}\n\n{body}\n\n{FROZEN_F2_MARKER}\n\n"

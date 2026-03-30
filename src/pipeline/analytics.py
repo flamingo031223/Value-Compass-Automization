@@ -555,6 +555,12 @@ def compute_cross_section_analytics(
         if type_col:
             result["model_types"] = mi[type_col].value_counts().to_dict()
 
+        # --- Intra-family Schwartz consistency (used in Families F1) ---
+        if dev_col and schwartz_df is not None:
+            result.update(
+                _compute_family_consistency(schwartz_df.copy(), model_info_df.copy())
+            )
+
     return result
 
 
@@ -576,8 +582,93 @@ def _schwartz_by_type(
         return {}
 
     group = joined.groupby(type_col)["_total"].mean()
-    return {
+    out: Dict[str, Any] = {
         "schwartz_by_type": {str(k): round(float(v), 3) for k, v in group.items()}
+    }
+
+    # Find genuinely low-scoring open-source models (filter Type=Open first)
+    open_mask = joined[type_col].str.lower().str.strip() == "open"
+    open_scores = joined.loc[open_mask, "_total"].sort_values()
+    if not open_scores.empty:
+        median_total = float(joined["_total"].median())
+        bottom_n = min(3, len(open_scores))
+        low_open = open_scores.head(bottom_n)
+        out["open_low_scorers"] = [
+            {"model": str(m), "schwartz_total": round(float(v), 3),
+             "below_median": float(v) < median_total}
+            for m, v in low_open.items()
+        ]
+        out["schwartz_overall_median"] = round(median_total, 3)
+
+    return out
+
+
+# ---------------------------------------------------------------------------
+# Intra-family Schwartz consistency (Families F1)
+# ---------------------------------------------------------------------------
+
+# Threshold below which a family qualifies as a "positive consistency example"
+_FAMILY_EXAMPLE_THRESHOLD = 0.15
+# Threshold above which a family is flagged as diverging (matches YAML delete_condition)
+_FAMILY_DIVERGE_THRESHOLD = 0.20
+# Major families — divergence in any of these triggers SIGNIFICANTLY_CHANGED
+_MAJOR_FAMILIES = {"openai", "anthropic", "google", "meta", "microsoft",
+                   "gpt", "claude", "gemini", "llama", "phi"}
+
+
+def _compute_family_consistency(
+    schwartz_df: pd.DataFrame,
+    model_info: pd.DataFrame,
+) -> Dict[str, Any]:
+    """
+    For each model family (developer group), compute intra-family spread on
+    key Schwartz dimensions.  Returns:
+      family_consistency : {family: {consistent, max_spread, n_models, diverging_dims}}
+      consistent_families : [family, ...]   — max_spread <= EXAMPLE_THRESHOLD on all dims
+      diverging_families  : [family, ...]   — max_spread >  DIVERGE_THRESHOLD on any dim
+    """
+    s  = _set_model_index(schwartz_df)
+    mi = _set_model_index(model_info)
+
+    dims    = [d for d in SCHWARTZ_DIMS if d in s.columns]
+    dev_col = _find_col(mi, ["Developer", "developer", "Company", "company"])
+    if not dims or dev_col is None:
+        return {}
+
+    joined = s[dims].join(mi[[dev_col]], how="inner")
+    if dev_col not in joined.columns:
+        return {}
+
+    consistency: Dict[str, Any] = {}
+    consistent: list = []
+    diverging:  list = []
+
+    for family, grp in joined.groupby(dev_col):
+        if len(grp) < 2:
+            continue  # single-model families can't be checked
+        spreads = {dim: round(float(grp[dim].max() - grp[dim].min()), 3) for dim in dims}
+        max_spread = max(spreads.values())
+        diverging_dims = [d for d, v in spreads.items() if v > _FAMILY_EXAMPLE_THRESHOLD]
+        is_consistent = max_spread <= _FAMILY_EXAMPLE_THRESHOLD
+
+        entry = {
+            "n_models":      len(grp),
+            "max_spread":    round(max_spread, 3),
+            "consistent":    is_consistent,
+            "diverging_dims": diverging_dims,
+            "models":        list(grp.index),
+        }
+        consistency[str(family)] = entry
+
+        if is_consistent:
+            consistent.append(str(family))
+        if max_spread > _FAMILY_DIVERGE_THRESHOLD:
+            diverging.append(str(family))
+
+    return {
+        "family_consistency": consistency,
+        "consistent_families": consistent,
+        "diverging_families":  diverging,
     }
 
 
