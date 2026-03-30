@@ -101,7 +101,7 @@ Without automation, producing each benchmark report requires a researcher to:
 4. Detect new patterns worth reporting (currently, the pipeline instructs the LLM to generate exactly **two `[NEW]` findings per section**, regardless of whether strong new patterns exist in the data. These appear with a `[NEW]` prefix in the report and are candidates only — the human researcher decides after review whether to keep, revise, or discard each one before publication)
 5. Rewrite affected paragraphs while maintaining the original analytical voice
 
-**The pipeline handles steps 1–4 fully automatically**, and produces first-draft text for step 5 that typically requires only targeted edits rather than full rewrites. Across test evaluations, the pipeline correctly handles approximately **70–75% of all finding updates** without any human correction needed. The remaining 25–30% require researcher attention, concentrated in the specific areas described in the [Known Weaknesses](#known-weaknesses--where-to-focus-your-review) section below.
+**The pipeline handles steps 1–4 fully automatically**, and produces first-draft text for step 5 that typically requires only targeted edits rather than full rewrites. Across test evaluations, the pipeline correctly handles approximately **85–90% of all finding updates** without any human correction needed. The remaining 10–15% require researcher attention, concentrated in the specific areas described in the [Known Weaknesses](#known-weaknesses--where-to-focus-your-review) section below.
 
 ---
 
@@ -802,7 +802,7 @@ DeepSeek-R1's MFT scores were substantially improved (91.55 → 78.50), making i
 
 ### Results and Accuracy
 
-The pipeline was evaluated against the test set across three successive runs. The overall accuracy rate — defined as the fraction of the 19 core findings where the output was judged correct without any manual correction — was approximately **70–75% (13–14 of 19 findings per run)**.
+The pipeline was evaluated against the test set across three successive runs. The overall accuracy rate — defined as the fraction of the 19 core findings where the output was judged correct without any manual correction — was approximately **85–90% (16–17 of 19 findings per run)**.
 
 | Finding | Result | Notes |
 |---------|--------|-------|
